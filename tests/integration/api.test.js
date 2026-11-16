@@ -269,4 +269,51 @@ describe('Расширенные интеграционные тесты API (Э
     expect(res.status).toBe(200);
     expect(body.items.map((item) => item.id)).toEqual([40, 20, 30, 10]);
   });
+  // TDD (RED): Фильтрация заявок по параметру priority (и сочетание с другими фильтрами)
+  test('GET /api/tickets?priority=high возвращает только заявки с высоким приоритетом', async () => {
+    // Arrange
+    await new Promise((resolve) => server.close(resolve));
+    server = createApp({
+      seed: [
+        {
+          id: 1,
+          title: 'Критичный сбой сети',
+          description: 'Описание критичного сбоя сети',
+          category: 'network',
+          priority: 'high',
+          status: 'new',
+          createdAt: '2026-10-01T10:00:00.000Z'
+        },
+        {
+          id: 2,
+          title: 'Обычный сбой ПО',
+          description: 'Описание обычного сбоя ПО',
+          category: 'software',
+          priority: 'medium',
+          status: 'new',
+          createdAt: '2026-10-02T10:00:00.000Z'
+        },
+        {
+          id: 3,
+          title: 'Мелкая задача по оборудованию',
+          description: 'Описание мелкой задачи',
+          category: 'hardware',
+          priority: 'low',
+          status: 'new',
+          createdAt: '2026-10-03T10:00:00.000Z'
+        }
+      ]
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    base = `http://127.0.0.1:${server.address().port}`;
+
+    // Act
+    const res = await fetch(`${base}/api/tickets?priority=high`);
+    const body = await res.json();
+
+    // Assert
+    expect(res.status).toBe(200);
+    expect(body.total).toBe(1);
+    expect(body.items.map((item) => item.id)).toEqual([1]);
+  });
 });
