@@ -1,4 +1,5 @@
 name: HelpDesk autotests
+
 on:
   push:
   pull_request:
@@ -7,13 +8,37 @@ jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
+
       - name: Install dependencies
-        run: npm install
-      - name: Unit and integration tests
-        run: npm test
-      # Самостоятельное задание: добавить запуск Cypress E2E.
-      # Сначала запустите тестовый сервер и дождитесь /api/health.
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests
+        run: npm run test:integration
+
+      - name: Run E2E tests (Cypress)
+        run: |
+          npm run start:test &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID || true" EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:3000/api/health > /dev/null; then
+              echo "Test server is ready!"
+              break
+            fi
+            sleep 1
+          done
+
+          curl -fsS http://127.0.0.1:3000/api/health > /dev/null
+          npm run e2e
