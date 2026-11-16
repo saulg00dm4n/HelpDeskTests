@@ -14,6 +14,47 @@ const priorityLabels = { low: 'Низкий', medium: 'Средний', high: '�
 const categoryLabels = { hardware: 'Оборудование', software: 'ПО', network: 'Сеть' };
 let lastRequest = 0;
 
+function renderTicketItem(ticket) {
+  const li = document.createElement('li');
+  li.className = 'ticket';
+  li.dataset.testid = 'ticket-item';
+  li.dataset.id = String(ticket.id);
+
+  const titleEl = document.createElement('h3');
+  titleEl.className = 'ticket-title';
+  titleEl.textContent = ticket.title;
+
+  const descEl = document.createElement('p');
+  descEl.className = 'ticket-description';
+  descEl.textContent = ticket.description;
+
+  const metaEl = document.createElement('div');
+  metaEl.className = 'ticket-meta';
+
+  [
+    categoryLabels[ticket.category],
+    priorityLabels[ticket.priority],
+    statusLabels[ticket.status]
+  ].forEach((label) => {
+    const span = document.createElement('span');
+    span.textContent = label;
+    metaEl.appendChild(span);
+  });
+
+  li.append(titleEl, descEl, metaEl);
+
+  if (ticket.status !== 'resolved') {
+    const nextStatus = ticket.status === 'new' ? 'in_progress' : 'resolved';
+    const button = document.createElement('button');
+    button.dataset.id = String(ticket.id);
+    button.dataset.next = nextStatus;
+    button.textContent = ticket.status === 'new' ? 'В работу' : 'Завершить';
+    li.appendChild(button);
+  }
+
+  return li;
+}
+
 async function loadTickets() {
   const requestId = ++lastRequest;
   try {
@@ -29,19 +70,15 @@ async function loadTickets() {
     listMessage.textContent = '';
     count.textContent = String(data.total);
 
-    list.innerHTML = data.items.map((ticket) => {
-      const nextStatus = ticket.status === 'new' ? 'in_progress' : 'resolved';
-      const action = ticket.status === 'resolved' ? '' :
-        `<button data-id="${ticket.id}" data-next="${nextStatus}">${ticket.status === 'new' ? 'В работу' : 'Завершить'}</button>`;
-      return `<li class="ticket" data-testid="ticket-item" data-id="${ticket.id}">
-        <h3 class="ticket-title">${ticket.title}</h3>
-        <p class="ticket-description">${ticket.description}</p>
-        <div class="ticket-meta"><span>${categoryLabels[ticket.category]}</span>
-          <span>${priorityLabels[ticket.priority]}</span><span>${statusLabels[ticket.status]}</span></div>
-        ${action}
-      </li>`;
-    }).join('');
-    if (data.total === 0) list.textContent = 'Заявок по заданным условиям нет.';
+    list.replaceChildren();
+    if (data.total === 0) {
+      list.textContent = 'Заявок по заданным условиям нет.';
+      return;
+    }
+
+    data.items.forEach((ticket) => {
+      list.appendChild(renderTicketItem(ticket));
+    });
   } catch (_) {
     if (requestId !== lastRequest) return;
     listMessage.textContent = 'Не удалось загрузить заявки.';
@@ -76,7 +113,8 @@ list.addEventListener('click', async (event) => {
   const button = event.target.closest('button[data-id]');
   if (!button) return;
   const response = await fetch(`/api/tickets/${button.dataset.id}/status`, {
-    method: 'PATCH', headers: { 'content-type': 'application/json' },
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ status: button.dataset.next })
   });
   if (!response.ok) {
