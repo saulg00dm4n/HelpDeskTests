@@ -97,4 +97,17 @@ describe('HelpDesk — E2E-сценарии (Этап 4)', () => {
       cy.get('.injected-xss').should('not.exist');
     });
   });
+  // TDD UI: Фильтрация по приоритету в сочетании с другими фильтрами
+  it('фильтрует заявки по приоритету через выпадающий список', () => {
+    page.open();
+
+    cy.intercept('GET', '/api/tickets*').as('filterByPriority');
+    page.setPriority('high');
+    page.setStatus('new');
+
+    cy.wait('@filterByPriority');
+    page.items().should('have.length', 1);
+    page.count().should('have.text', '1');
+    page.items().first().should('contain', 'VPN недоступен');
+  });
 });

@@ -23,6 +23,10 @@ export class TicketsPage {
     cy.get('[data-testid="category-filter"]').select(category);
   }
 
+  setPriority(priority) {
+    cy.get('[data-testid="priority-filter"]').select(priority);
+  }
+
   ticketByTitle(title) {
     return this.items().contains('.ticket-title', title).closest('[data-testid="ticket-item"]');
   }
